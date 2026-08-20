@@ -47,7 +47,15 @@
   };
   const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
 
-  let subjects = load(KEY_SUBJECTS, []);
+  let subjects = load(KEY_SUBJECTS, []).map(s => {
+    if (s.dias && !s.horarios) {
+      s.horarios = s.dias.map(d => ({ dia: d, horaInicio: s.horaInicio || "08:00", horaFin: s.horaFin || "10:00" }));
+      delete s.dias;
+      delete s.horaInicio;
+      delete s.horaFin;
+    }
+    return s;
+  });
   let tasks = load(KEY_TASKS, []);
   let notifiedTasks = load(KEY_NOTIFIED, {});
 
@@ -65,12 +73,12 @@
     localStorage.setItem(KEY_SEEDED, "1");
     if (subjects.length || tasks.length) return;
 
-    const mk = (nombre, profesor, color, dias, horaInicio, horaFin) => ({
-      id: uid(), nombre, profesor, color, dias, horaInicio, horaFin,
+    const mk = (nombre, profesor, color, horarios) => ({
+      id: uid(), nombre, profesor, color, horarios,
     });
-    const mat = mk("Matemáticas", "Carlos Gómez", "#2563eb", ["Lunes", "Miércoles"], "08:00", "10:00");
-    const dis = mk("Diseño", "Laura Ríos", "#7c3aed", ["Martes", "Jueves"], "14:00", "16:00");
-    const ing = mk("Inglés", "Ana Pérez", "#16a34a", ["Viernes"], "10:00", "12:00");
+    const mat = mk("Matemáticas", "Carlos Gómez", "#2563eb", [{ dia: "Lunes", horaInicio: "08:00", horaFin: "10:00" }, { dia: "Miércoles", horaInicio: "08:00", horaFin: "10:00" }]);
+    const dis = mk("Diseño", "Laura Ríos", "#7c3aed", [{ dia: "Martes", horaInicio: "14:00", horaFin: "16:00" }, { dia: "Jueves", horaInicio: "14:00", horaFin: "16:00" }]);
+    const ing = mk("Inglés", "Ana Pérez", "#16a34a", [{ dia: "Viernes", horaInicio: "10:00", horaFin: "12:00" }]);
     subjects = [mat, dis, ing];
 
     const day = (offset) => {
@@ -181,10 +189,14 @@
     render();
   }
 
-  function deleteTask(id) {
-    tasks = tasks.filter((t) => t.id !== id);
-    persist();
-    render();
+  async function deleteTask(id) {
+    const t = tasks.find(x => x.id === id);
+    if (!t) return;
+    if (await customConfirm(`¿Estás seguro de que deseas eliminar la tarea "${t.titulo}"?`)) {
+      tasks = tasks.filter((x) => x.id !== id);
+      persist();
+      render();
+    }
   }
 
   function duplicateTask(id) {
@@ -447,7 +459,7 @@
           </div>
           <h3 style="margin-top:10px;font-size:17px">${esc(s.nombre)}</h3>
           <div class="kv">Profesor<br><b>${esc(s.profesor || "—")}</b></div>
-          <div class="kv">${s.dias?.length ? esc(s.dias.join(", ")) : "Sin días"}<br><b>${fmtTime(s.horaInicio)} – ${fmtTime(s.horaFin)}</b></div>
+          <div class="kv">Horarios<br><b>${s.horarios && s.horarios.length ? s.horarios.map(h => `${h.dia.slice(0,3)} ${fmtTime(h.horaInicio)}-${fmtTime(h.horaFin)}`).join(', ') : "Sin horario"}</b></div>
           <div class="kv" style="margin-top:12px"><span class="badge">${pend} tareas pendientes</span></div>
         </article>
       `);
@@ -490,7 +502,7 @@
       <div class="page-head">
         <div>
           <h1><span class="dot" style="background:${s.color};width:14px;height:14px;margin-right:8px"></span>${esc(s.nombre)}</h1>
-          <p>Profesor ${esc(s.profesor || "—")} · ${esc(s.dias?.join(", ") || "Sin días")} · ${fmtTime(s.horaInicio)} – ${fmtTime(s.horaFin)}</p>
+          <p>Profesor ${esc(s.profesor || "—")} · ${s.horarios && s.horarios.length ? s.horarios.map(h => `${h.dia.slice(0,3)} ${fmtTime(h.horaInicio)}-${fmtTime(h.horaFin)}`).join(', ') : "Sin horario"}</p>
         </div>
       </div>
     `));
@@ -618,22 +630,29 @@
       grid.appendChild(el(`<div class="sched-hour">${fmtTime(`${String(h).padStart(2, "0")}:00`)}</div>`));
       cols.forEach((day) => {
         const slot = el('<div class="sched-slot"></div>');
-        subjects
-          .filter((s) => (s.dias || []).includes(day) && Number((s.horaInicio || "").split(":")[0]) === h)
-          .forEach((s) => {
-            const start = Number(s.horaInicio.split(":")[0]) + Number(s.horaInicio.split(":")[1]) / 60;
-            const end = Number(s.horaFin.split(":")[0]) + Number(s.horaFin.split(":")[1]) / 60;
-            const height = Math.max(0.5, end - start) * 56 - 4;
-            const block = el(`
-              <div class="sched-block" style="background:${s.color};height:${height}px">
-                <b>${esc(s.nombre)}</b>
-                <small>${fmtTime(s.horaInicio)} – ${fmtTime(s.horaFin)}</small><br>
-                <small>${esc(s.profesor || "")}</small>
-              </div>
-            `);
-            block.addEventListener("click", () => { state.subjectId = s.id; state.view = "subjectDetail"; render(); });
-            slot.appendChild(block);
+        let matches = [];
+        subjects.forEach(s => {
+          (s.horarios || []).forEach(h_obj => {
+            if (h_obj.dia === day && Number(h_obj.horaInicio.split(":")[0]) === h) {
+              matches.push({ s, h_obj });
+            }
           });
+        });
+        
+        matches.sort((a, b) => a.h_obj.horaInicio.localeCompare(b.h_obj.horaInicio)).forEach(({ s, h_obj }) => {
+          const start = Number(h_obj.horaInicio.split(":")[0]) + Number(h_obj.horaInicio.split(":")[1]) / 60;
+          const end = Number(h_obj.horaFin.split(":")[0]) + Number(h_obj.horaFin.split(":")[1]) / 60;
+          const height = Math.max(0.5, end - start) * 56 - 4;
+          const block = el(`
+            <div class="sched-block" style="background:${s.color};height:${height}px">
+              <b>${esc(s.nombre)}</b>
+              <small>${fmtTime(h_obj.horaInicio)} – ${fmtTime(h_obj.horaFin)}</small><br>
+              <small>${esc(s.profesor || "")}</small>
+            </div>
+          `);
+          block.addEventListener("click", () => { state.subjectId = s.id; state.view = "subjectDetail"; render(); });
+          slot.appendChild(block);
+        });
         grid.appendChild(slot);
       });
     });
@@ -789,16 +808,27 @@
   });
   const paintSwatches = () => swatches.querySelectorAll(".swatch").forEach((b) => b.classList.toggle("sel", b.dataset.color === state.modalColor));
 
-  const daysPicker = document.getElementById("daysPicker");
-  DAYS.forEach((d) => {
-    const b = el(`<button type="button" class="day-toggle" data-day="${d}">${d}</button>`);
-    b.onclick = () => {
-      state.modalDays = state.modalDays.includes(d) ? state.modalDays.filter((x) => x !== d) : [...state.modalDays, d];
-      paintDays();
-    };
-    daysPicker.appendChild(b);
-  });
-  const paintDays = () => daysPicker.querySelectorAll(".day-toggle").forEach((b) => b.classList.toggle("on", state.modalDays.includes(b.dataset.day)));
+  const scheduleList = document.getElementById("scheduleList");
+  document.getElementById("addScheduleBtn").onclick = () => {
+    addScheduleRow();
+  };
+
+  function addScheduleRow(h = { dia: "Lunes", horaInicio: "08:00", horaFin: "10:00" }) {
+    const row = document.createElement("div");
+    row.className = "schedule-row";
+    row.style.cssText = "display:flex; gap:8px; align-items:center;";
+    row.innerHTML = `
+      <select class="inp schedule-dia" style="flex:1">
+        ${DAYS.map(d => `<option value="${d}" ${d === h.dia ? "selected" : ""}>${d}</option>`).join("")}
+      </select>
+      <input type="time" class="inp schedule-inicio" value="${h.horaInicio}" />
+      <span style="color:var(--text-muted)">a</span>
+      <input type="time" class="inp schedule-fin" value="${h.horaFin}" />
+      <button type="button" class="icon-btn danger-hover" style="color:var(--danger)" onclick="this.parentElement.remove()" title="Eliminar horario">✕</button>
+    `;
+    scheduleList.appendChild(row);
+    attachCustomSelects(); // Upgrade the newly added select
+  }
 
   function openSubjectModal(id = null) {
     localStorage.setItem("aula_activeModal", JSON.stringify({ type: 'subject', id }));
@@ -807,12 +837,13 @@
     subjectForm.id.value = s ? s.id : "";
     subjectForm.nombre.value = s?.nombre || "";
     subjectForm.profesor.value = s?.profesor || "";
-    subjectForm.horaInicio.value = s?.horaInicio || "08:00";
-    subjectForm.horaFin.value = s?.horaFin || "10:00";
     state.modalColor = s?.color || COLORS[0];
-    state.modalDays = s?.dias ? [...s.dias] : [];
     paintSwatches();
-    paintDays();
+    
+    scheduleList.innerHTML = "";
+    const horarios = s?.horarios && s.horarios.length ? s.horarios : [{ dia: "Lunes", horaInicio: "08:00", horaFin: "10:00" }];
+    horarios.forEach(h => addScheduleRow(h));
+    
     document.getElementById("subjectModalTitle").textContent = s ? "Editar materia" : "Nueva materia";
     subjectModal.hidden = false;
   }
@@ -820,13 +851,20 @@
   subjectForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const f = new FormData(subjectForm);
+    
+    const horarios = [];
+    scheduleList.querySelectorAll(".schedule-row").forEach(row => {
+      const dia = row.querySelector(".schedule-dia")?.value;
+      const inicio = row.querySelector(".schedule-inicio")?.value;
+      const fin = row.querySelector(".schedule-fin")?.value;
+      if (dia && inicio && fin) horarios.push({ dia, horaInicio: inicio, horaFin: fin });
+    });
+
     const data = {
       nombre: f.get("nombre").trim(),
       profesor: f.get("profesor").trim(),
       color: state.modalColor,
-      dias: [...state.modalDays].sort((a, b) => DAYS.indexOf(a) - DAYS.indexOf(b)),
-      horaInicio: f.get("horaInicio"),
-      horaFin: f.get("horaFin"),
+      horarios: horarios,
     };
     const id = f.get("id");
     if (id) Object.assign(subjects.find((s) => s.id === id), data);
