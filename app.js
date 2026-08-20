@@ -521,8 +521,7 @@
         <section class="card">
           <div class="kv">Nombre<br><b>${esc(s.nombre)}</b></div>
           <div class="kv">Profesor<br><b>${esc(s.profesor || "—")}</b></div>
-          <div class="kv">Días<br><b>${esc(s.dias?.join(", ") || "—")}</b></div>
-          <div class="kv">Horario<br><b>${fmtTime(s.horaInicio)} – ${fmtTime(s.horaFin)}</b></div>
+          <div class="kv">Horarios<br><b>${s.horarios && s.horarios.length ? s.horarios.map(h => `${h.dia}: ${fmtTime(h.horaInicio)} – ${fmtTime(h.horaFin)}`).join('<br>') : "—"}</b></div>
           <div class="kv">Total de tareas<br><b>${tasks.filter((t) => t.materiaId === s.id).length}</b></div>
         </section>
       `));
@@ -573,7 +572,6 @@
       </section>
     `);
     bar.querySelectorAll("input,select").forEach((i) => {
-      i.style.cssText = "border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;outline:none;background:var(--bg);color:var(--text);font-family:var(--font-sans)";
       i.addEventListener("change", () => { state[i.dataset.k] = i.value; render(); });
       if (i.dataset.k === "search") {
         i.addEventListener("input", () => {
@@ -894,9 +892,13 @@
     taskForm.hora.value = t?.hora || "18:00";
     taskForm.prioridad.value = t?.prioridad || "media";
     taskForm.estado.value = t?.estado || "pendiente";
+    
+    // Mostrar modal primero, luego sincronizar custom selects
     document.getElementById("taskModalTitle").textContent = t ? "Editar tarea" : "Nueva tarea";
     document.getElementById("taskSubmit").textContent = t ? "Guardar cambios" : "Crear tarea";
     taskModal.hidden = false;
+    // Disparar evento change para que el custom select se actualice visualmente (ahora que está en el DOM)
+    ["materiaId", "prioridad", "estado"].forEach(n => taskForm[n].dispatchEvent(new Event("change")));
   }
 
   taskForm.addEventListener("submit", (e) => {
