@@ -979,18 +979,69 @@
   document.querySelectorAll("[data-new-task]").forEach((b) => (b.onclick = () => openTaskModal()));
 
   /* ---------- Custom Select Component ---------- */
+  // Portal list element - shared, lives on body to avoid overflow clipping
+  const csPortalList = document.createElement("div");
+  csPortalList.className = "custom-select-list";
+  csPortalList.style.position = "fixed";
+  csPortalList.style.zIndex = "500";
+  csPortalList.style.display = "none";
+  document.body.appendChild(csPortalList);
+
+  let csActiveWrap = null;
+  let csActiveSel = null;
+
+  function csClose() {
+    csPortalList.style.display = "none";
+    if (csActiveWrap) csActiveWrap.classList.remove("open");
+    csActiveWrap = null;
+    csActiveSel = null;
+  }
+
+  function csOpen(wrap, sel, head) {
+    csClose();
+    csActiveSel = sel;
+    csActiveWrap = wrap;
+    wrap.classList.add("open");
+
+    // Rebuild options
+    csPortalList.innerHTML = "";
+    Array.from(sel.options).forEach(opt => {
+      const item = document.createElement("div");
+      item.className = "custom-select-item" + (sel.value === opt.value ? " selected" : "");
+      item.textContent = opt.textContent;
+      item.onmousedown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sel.value = opt.value;
+        sel.dispatchEvent(new Event("change"));
+        csClose();
+      };
+      csPortalList.appendChild(item);
+    });
+
+    // Position portal below the head element
+    const rect = head.getBoundingClientRect();
+    csPortalList.style.left = rect.left + "px";
+    csPortalList.style.top = (rect.bottom + 4) + "px";
+    csPortalList.style.width = rect.width + "px";
+    csPortalList.style.maxHeight = "240px";
+    csPortalList.style.overflowY = "auto";
+    csPortalList.style.display = "flex";
+    csPortalList.style.flexDirection = "column";
+  }
+
   function attachCustomSelects() {
     document.querySelectorAll("select:not([data-customized])").forEach(sel => {
       sel.setAttribute("data-customized", "true");
       sel.style.display = "none";
-      
+
       const wrap = document.createElement("div");
       wrap.className = "custom-select";
       if (sel.classList.contains("inp")) wrap.classList.add("inp");
-      
+
       const head = document.createElement("div");
       head.className = "custom-select-head";
-      
+
       const valObj = document.createElement("span");
       const updateVal = () => {
         const opt = sel.options[sel.selectedIndex];
@@ -998,57 +1049,38 @@
       };
       updateVal();
       sel.addEventListener("change", updateVal);
-      
+
       const icon = document.createElement("span");
       icon.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>`;
-      
+
       head.appendChild(valObj);
       head.appendChild(icon);
-      
-      const list = document.createElement("div");
-      list.className = "custom-select-list";
-      
-      const renderOptions = () => {
-        list.innerHTML = "";
-        Array.from(sel.options).forEach(opt => {
-          const item = document.createElement("div");
-          item.className = "custom-select-item";
-          if (sel.value === opt.value) item.classList.add("selected");
-          item.textContent = opt.textContent;
-          item.onclick = (e) => {
-            e.stopPropagation();
-            sel.value = opt.value;
-            sel.dispatchEvent(new Event("change"));
-            wrap.classList.remove("open");
-            list.querySelectorAll(".custom-select-item").forEach(i => i.classList.remove("selected"));
-            item.classList.add("selected");
-          };
-          list.appendChild(item);
-        });
-      };
-      
+
+      // Refresh options if the underlying <select> changes (e.g. materias list)
       const observer = new MutationObserver(() => {
-        renderOptions();
         updateVal();
+        if (csActiveSel === sel) csOpen(wrap, sel, head);
       });
       observer.observe(sel, { childList: true });
-      renderOptions();
-      
+
       head.onclick = (e) => {
         e.stopPropagation();
-        const isOpen = wrap.classList.contains("open");
-        document.querySelectorAll(".custom-select.open").forEach(c => c.classList.remove("open"));
-        if (!isOpen) wrap.classList.add("open");
+        if (csActiveWrap === wrap) {
+          csClose();
+        } else {
+          csOpen(wrap, sel, head);
+        }
       };
-      
+
       wrap.appendChild(head);
-      wrap.appendChild(list);
       sel.parentNode.insertBefore(wrap, sel.nextSibling);
     });
   }
 
-  document.addEventListener("click", () => {
-    document.querySelectorAll(".custom-select.open").forEach(c => c.classList.remove("open"));
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".custom-select") && !csPortalList.contains(e.target)) {
+      csClose();
+    }
   });
 
   /* ---------- Init ---------- */
