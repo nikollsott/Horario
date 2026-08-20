@@ -1056,6 +1056,7 @@
       observer.observe(sel, { childList: true });
 
       head.onclick = (e) => {
+        e.preventDefault();
         e.stopPropagation();
         if (csActiveWrap === wrap) {
           csClose();
