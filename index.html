@@ -100,18 +100,11 @@
           <div class="swatches" id="colorSwatches"></div>
         </div>
         <div class="field">
-          <span>Días de clase</span>
-          <div class="days" id="daysPicker"></div>
-        </div>
-        <div class="grid-2">
-          <label class="field">
-            <span>Hora de inicio</span>
-            <input type="time" name="horaInicio" value="08:00" />
-          </label>
-          <label class="field">
-            <span>Hora de finalización</span>
-            <input type="time" name="horaFin" value="10:00" />
-          </label>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+             <span>Horarios de clase</span>
+             <button type="button" class="btn btn-ghost btn-sm" id="addScheduleBtn" style="padding:6px 10px; font-size:13px; font-weight:600;">+ Agregar horario</button>
+          </div>
+          <div id="scheduleList" style="display:flex;flex-direction:column;gap:12px; margin-top: 4px;"></div>
         </div>
         <footer class="modal-foot">
           <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
