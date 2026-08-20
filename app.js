@@ -1,8 +1,3 @@
-/* =========================================================
-   Aula — Plataforma de organización académica (JS vanilla)
-   Datos en localStorage · Sin dependencias externas
-   ========================================================= */
-
 (() => {
   "use strict";
 
@@ -981,10 +976,7 @@
   /* ---------- Custom Select Component ---------- */
   // Portal list element - shared, lives on body to avoid overflow clipping
   const csPortalList = document.createElement("div");
-  csPortalList.className = "custom-select-list";
-  csPortalList.style.position = "fixed";
-  csPortalList.style.zIndex = "500";
-  csPortalList.style.display = "none";
+  csPortalList.className = "cs-portal";
   document.body.appendChild(csPortalList);
 
   let csActiveWrap = null;
@@ -992,6 +984,7 @@
 
   function csClose() {
     csPortalList.style.display = "none";
+    csPortalList.innerHTML = "";
     if (csActiveWrap) csActiveWrap.classList.remove("open");
     csActiveWrap = null;
     csActiveSel = null;
@@ -1021,13 +1014,12 @@
 
     // Position portal below the head element
     const rect = head.getBoundingClientRect();
-    csPortalList.style.left = rect.left + "px";
-    csPortalList.style.top = (rect.bottom + 4) + "px";
-    csPortalList.style.width = rect.width + "px";
-    csPortalList.style.maxHeight = "240px";
-    csPortalList.style.overflowY = "auto";
-    csPortalList.style.display = "flex";
-    csPortalList.style.flexDirection = "column";
+    Object.assign(csPortalList.style, {
+      left: rect.left + "px",
+      top: (rect.bottom + 4) + "px",
+      width: rect.width + "px",
+      display: "flex"
+    });
   }
 
   function attachCustomSelects() {
