@@ -401,7 +401,8 @@ h1, h2, h3, h4 {
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); background: var(--surface); }
 
 /* Custom Select Component */
-.custom-select { position: relative; width: 100%; font-family: var(--font-sans); font-size: 14.5px; user-select: none; }
+.custom-select { position: relative; width: 100%; font-family: var(--font-sans); font-size: 14.5px; user-select: none; z-index: 1; }
+.custom-select.open { z-index: 101; }
 .custom-select-head {
   border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--bg); color: var(--text);
   display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s ease;
@@ -428,8 +429,22 @@ h1, h2, h3, h4 {
 .day-toggle:hover { border-color: var(--text-muted); color: var(--text); }
 .day-toggle.on { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 600; }
 
-/* Filter Bar styles specific overrides */
-.inp, select[data-k] { background: var(--surface) !important; }
+/* Filter Bar and Schedule Row inputs */
+.inp {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+}
+.inp:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+/* Schedule rows inside subject modal */
+.schedule-row .inp { padding: 8px 10px; font-size: 13px; }
 
 /* ===== Responsive ===== */
 @media (max-width: 1080px) {
