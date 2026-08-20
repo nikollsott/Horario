@@ -261,18 +261,21 @@
     const menu = el(`
       <div class="menu">
         <button data-a="edit">Editar</button>
-        <button data-a="dup">Duplicar</button>
         <button data-a="del" class="danger">Eliminar</button>
       </div>
     `);
+
+    // Portal: append to body so overflow:hidden on .task doesn't clip the menu
+    const rect = wrap.getBoundingClientRect();
+    menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;right:${window.innerWidth - rect.right}px;z-index:200;`;
+
     menu.addEventListener("click", (e) => {
       const a = e.target.dataset.a;
       if (a === "edit") openTaskModal(id);
-      if (a === "dup") duplicateTask(id);
       if (a === "del") deleteTask(id);
       menu.remove();
     });
-    wrap.appendChild(menu);
+    document.body.appendChild(menu);
     setTimeout(() => document.addEventListener("click", () => menu.remove(), { once: true }), 0);
   }
 
