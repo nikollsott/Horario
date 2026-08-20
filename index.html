@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tareas</title>
+  <meta name="description"
+    content="Organiza materias, tareas, calendario y horario universitario en una sola plataforma." />
+  <link rel="icon" href="favicon.jpg" type="image/jpeg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+
+</head>
+
+<body>
+  <div class="layout">
+    <!-- Topbar (móvil) -->
+    <header class="topbar">
+      <button class="icon-btn" id="menuToggle" aria-label="Abrir menú">☰</button>
+      <span class="brand-mini">Tareas</span>
+      <button class="btn btn-primary" data-new-task>+ Tarea</button>
+    </header>
+
+    <div class="scrim" id="scrim" hidden></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span class="brand-name">Aula</span>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="nav-item" data-view="dashboard"><svg width="20" height="20" fill="none" stroke="currentColor"
+            stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+            </path>
+          </svg> Inicio</button>
+        <button class="nav-item" data-view="tasks"><svg width="20" height="20" fill="none" stroke="currentColor"
+            stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
+            </path>
+          </svg> Tareas</button>
+        <button class="nav-item" data-view="calendar"><svg width="20" height="20" fill="none" stroke="currentColor"
+            stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg> Calendario</button>
+        <button class="nav-item" data-view="subjects"><svg width="20" height="20" fill="none" stroke="currentColor"
+            stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+            </path>
+          </svg> Materias</button>
+        <button class="nav-item" data-view="schedule"><svg width="20" height="20" fill="none" stroke="currentColor"
+            stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg> Horario</button>
+        <button class="nav-item" data-view="stats"><svg width="20" height="20" fill="none" stroke="currentColor"
+            stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+            </path>
+          </svg> Estadísticas</button>
+      </nav>
+
+
+    </aside>
+
+    <!-- Contenido -->
+    <main class="content" id="content"></main>
+  </div>
+
+  <!-- Modal materia -->
+  <div class="modal-overlay" id="subjectModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h3 id="subjectModalTitle">Nueva materia</h3>
+        <button class="icon-btn" data-close>✕</button>
+      </header>
+      <form id="subjectForm" class="modal-body">
+        <input type="hidden" name="id" />
+        <label class="field">
+          <span>Nombre de la materia</span>
+          <input name="nombre" required placeholder="Matemáticas" />
+        </label>
+        <label class="field">
+          <span>Profesor <em>(opcional)</em></span>
+          <input name="profesor" placeholder="Carlos Gómez" />
+        </label>
+        <div class="field">
+          <span>Color</span>
+          <div class="swatches" id="colorSwatches"></div>
+        </div>
+        <div class="field">
+          <span>Días de clase</span>
+          <div class="days" id="daysPicker"></div>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>Hora de inicio</span>
+            <input type="time" name="horaInicio" value="08:00" />
+          </label>
+          <label class="field">
+            <span>Hora de finalización</span>
+            <input type="time" name="horaFin" value="10:00" />
+          </label>
+        </div>
+        <footer class="modal-foot">
+          <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar materia</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal tarea -->
+  <div class="modal-overlay" id="taskModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h3 id="taskModalTitle">Nueva tarea</h3>
+        <button class="icon-btn" data-close>✕</button>
+      </header>
+      <form id="taskForm" class="modal-body">
+        <input type="hidden" name="id" />
+        <label class="field">
+          <span>Título de la tarea</span>
+          <input name="titulo" required placeholder="Taller de derivadas" />
+        </label>
+        <label class="field">
+          <span>Materia</span>
+          <select name="materiaId" id="taskSubjectSelect" required></select>
+        </label>
+        <label class="field">
+          <span>Descripción</span>
+          <textarea name="descripcion" rows="3" placeholder="Detalles de la entrega..."></textarea>
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>Fecha de entrega</span>
+            <input type="date" name="fecha" required />
+          </label>
+          <label class="field">
+            <span>Hora</span>
+            <input type="time" name="hora" value="18:00" />
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>Prioridad</span>
+            <select name="prioridad">
+              <option value="baja">Baja</option>
+              <option value="media" selected>Media</option>
+              <option value="alta">Alta</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Estado</span>
+            <select name="estado">
+              <option value="pendiente" selected>Pendiente</option>
+              <option value="progreso">En progreso</option>
+              <option value="completada">Completada</option>
+            </select>
+          </label>
+        </div>
+        <footer class="modal-foot">
+          <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="taskSubmit">Crear tarea</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal detalle tarea -->
+  <div class="modal-overlay" id="detailModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h3>Detalle de la tarea</h3>
+        <button class="icon-btn" data-close>✕</button>
+      </header>
+      <div class="modal-body" id="detailBody"></div>
+    </div>
+  </div>
+
+  <!-- Modal confirm -->
+  <div class="modal-overlay" id="confirmModal" style="z-index: 100" hidden>
+    <div class="modal" style="max-width: 400px" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h3 id="confirmTitle">Confirmar</h3>
+        <button class="icon-btn" data-close>✕</button>
+      </header>
+      <div class="modal-body">
+        <p id="confirmMessage" style="margin:0"></p>
+      </div>
+      <footer class="modal-foot">
+        <button type="button" class="btn btn-ghost" id="confirmCancel">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="confirmOk">Aceptar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Modal alert -->
+  <div class="modal-overlay" id="alertModal" style="z-index: 100" hidden>
+    <div class="modal" style="max-width: 400px" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h3 id="alertTitle">Atención</h3>
+        <button class="icon-btn" data-close>✕</button>
+      </header>
+      <div class="modal-body">
+        <p id="alertMessage" style="margin:0"></p>
+      </div>
+      <footer class="modal-foot">
+        <button type="button" class="btn btn-primary" id="alertOk">Entendido</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
