@@ -3154,6 +3154,62 @@ h4 {
   .dash-subject-stats {
     grid-template-columns: 1fr;
   }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-head, .modal-foot {
+    padding: 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .content {
+    padding: 16px 12px 64px;
+  }
+
+  .page-head h1 {
+    font-size: 22px;
+  }
+
+  .card, .stat, .exam-card, .subject-detail-header, .projection-panel {
+    padding: 16px;
+  }
+
+  .stat b {
+    font-size: 28px;
+  }
+
+  .segmented-control {
+    flex-wrap: wrap;
+  }
+
+  .segmented-control label {
+    flex: 1 1 45%;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    font-size: 13.5px;
+  }
+  
+  .cal-cell {
+    min-height: 60px;
+    padding: 4px;
+  }
+  
+  .cal-daynum {
+    font-size: 12px;
+  }
+  
+  .task-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
 }
 
 /* ===== Academic Scale & Approval Badges ===== */
