@@ -4,27 +4,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tareas</title>
+  <title>Aulapp</title>
   <meta name="description"
-    content="Organiza materias, tareas, calendario y horario universitario en una sola plataforma." />
+    content="Organiza materias, notas, exámenes, recordatorios y seguimiento académico en una sola plataforma." />
   <link rel="icon" href="favicon.jpg" type="image/jpeg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
     rel="stylesheet" />
-
   <link rel="stylesheet" href="styles.css" />
-
 </head>
 
 <body>
   <div class="layout">
     <!-- Topbar (móvil) -->
     <header class="topbar">
-      <button class="icon-btn" id="menuToggle" aria-label="Abrir menú">☰</button>
-      <span class="brand-mini">Tareas</span>
-      <button class="btn btn-primary" data-new-task>+ Tarea</button>
+      <button class="icon-btn" id="menuToggle" aria-label="Abrir menú">
+        <i data-lucide="menu"></i>
+      </button>
+      <span class="brand-mini">Aula</span>
+      <button class="btn btn-primary" data-new-task>
+        <i data-lucide="plus"></i> Tarea
+      </button>
     </header>
 
     <div class="scrim" id="scrim" hidden></div>
@@ -37,41 +39,31 @@
       </div>
 
       <nav class="nav" id="nav">
-        <button class="nav-item" data-view="dashboard"><svg width="20" height="20" fill="none" stroke="currentColor"
-            stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
-            </path>
-          </svg> Inicio</button>
-        <button class="nav-item" data-view="tasks"><svg width="20" height="20" fill="none" stroke="currentColor"
-            stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
-            </path>
-          </svg> Tareas</button>
-        <button class="nav-item" data-view="calendar"><svg width="20" height="20" fill="none" stroke="currentColor"
-            stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-          </svg> Calendario</button>
-        <button class="nav-item" data-view="subjects"><svg width="20" height="20" fill="none" stroke="currentColor"
-            stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
-            </path>
-          </svg> Materias</button>
-        <button class="nav-item" data-view="schedule"><svg width="20" height="20" fill="none" stroke="currentColor"
-            stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg> Horario</button>
-        <button class="nav-item" data-view="stats"><svg width="20" height="20" fill="none" stroke="currentColor"
-            stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
-            </path>
-          </svg> Estadísticas</button>
+        <button class="nav-item" data-view="dashboard">
+          <i data-lucide="house"></i> Inicio
+        </button>
+        <button class="nav-item" data-view="tasks">
+          <i data-lucide="circle-check"></i> Tareas
+        </button>
+        <button class="nav-item" data-view="reminders">
+          <i data-lucide="bell"></i> Recordatorios
+        </button>
+        <button class="nav-item" data-view="exams">
+          <i data-lucide="file-text"></i> Exámenes
+        </button>
+        <button class="nav-item" data-view="calendar">
+          <i data-lucide="calendar"></i> Calendario
+        </button>
+        <button class="nav-item" data-view="subjects">
+          <i data-lucide="book-open"></i> Materias
+        </button>
+        <button class="nav-item" data-view="schedule">
+          <i data-lucide="clock"></i> Horario
+        </button>
+        <button class="nav-item" data-view="stats">
+          <i data-lucide="bar-chart-2"></i> Estadísticas
+        </button>
       </nav>
-
-
     </aside>
 
     <!-- Contenido -->
@@ -83,28 +75,40 @@
     <div class="modal" role="dialog" aria-modal="true">
       <header class="modal-head">
         <h3 id="subjectModalTitle">Nueva materia</h3>
-        <button class="icon-btn" data-close>✕</button>
+        <button class="icon-btn" data-close aria-label="Cerrar"><i data-lucide="x"></i></button>
       </header>
       <form id="subjectForm" class="modal-body">
         <input type="hidden" name="id" />
         <label class="field">
           <span>Nombre de la materia</span>
-          <input name="nombre" required placeholder="Matemáticas" />
+          <input name="nombre" required placeholder="Cálculo" />
         </label>
         <label class="field">
           <span>Profesor <em>(opcional)</em></span>
           <input name="profesor" placeholder="Carlos Gómez" />
         </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>Nota mínima para aprobar</span>
+            <input name="notaMinima" type="number" step="0.1" min="0" value="3.0" placeholder="3.0" />
+          </label>
+          <label class="field">
+            <span>Escala máxima</span>
+            <input name="escalaMax" type="number" step="0.1" min="1" value="5.0" placeholder="5.0" />
+          </label>
+        </div>
         <div class="field">
           <span>Color</span>
           <div class="swatches" id="colorSwatches"></div>
         </div>
         <div class="field">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-             <span>Horarios de clase</span>
-             <button type="button" class="btn btn-ghost btn-sm" id="addScheduleBtn" style="padding:6px 10px; font-size:13px; font-weight:600;">+ Agregar horario</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Horarios de clase</span>
+            <button type="button" class="btn btn-ghost btn-sm" id="addScheduleBtn">
+              <i data-lucide="plus" style="width:14px;height:14px"></i> Agregar
+            </button>
           </div>
-          <div id="scheduleList" style="display:flex;flex-direction:column;gap:12px; margin-top: 4px;"></div>
+          <div id="scheduleList" style="display:flex;flex-direction:column;gap:12px;margin-top:4px;"></div>
         </div>
         <footer class="modal-foot">
           <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
@@ -119,7 +123,7 @@
     <div class="modal" role="dialog" aria-modal="true">
       <header class="modal-head">
         <h3 id="taskModalTitle">Nueva tarea</h3>
-        <button class="icon-btn" data-close>✕</button>
+        <button class="icon-btn" data-close aria-label="Cerrar"><i data-lucide="x"></i></button>
       </header>
       <form id="taskForm" class="modal-body">
         <input type="hidden" name="id" />
@@ -144,16 +148,15 @@
             <span>Hora</span>
             <input type="time" name="hora" value="18:00" />
           </label>
-        </div>
-        <div class="grid-2">
-          <label class="field">
+          <div class="field">
             <span>Prioridad</span>
-            <select name="prioridad">
-              <option value="baja">Baja</option>
-              <option value="media" selected>Media</option>
-              <option value="alta">Alta</option>
-            </select>
-          </label>
+            <div class="segmented-control">
+              <label class="seg-urgente"><input type="radio" name="prioridad" value="urgente"> <span><i data-lucide="triangle-alert"></i> Urgente</span></label>
+              <label class="seg-alta"><input type="radio" name="prioridad" value="alta"> <span><i data-lucide="chevrons-up"></i> Alta</span></label>
+              <label class="seg-media"><input type="radio" name="prioridad" value="media" checked> <span><i data-lucide="minus"></i> Media</span></label>
+              <label class="seg-baja"><input type="radio" name="prioridad" value="baja"> <span><i data-lucide="chevron-down"></i> Baja</span></label>
+            </div>
+          </div>
           <label class="field">
             <span>Estado</span>
             <select name="estado">
@@ -176,18 +179,205 @@
     <div class="modal" role="dialog" aria-modal="true">
       <header class="modal-head">
         <h3>Detalle de la tarea</h3>
-        <button class="icon-btn" data-close>✕</button>
+        <button class="icon-btn" data-close aria-label="Cerrar"><i data-lucide="x"></i></button>
       </header>
       <div class="modal-body" id="detailBody"></div>
     </div>
   </div>
 
+  <!-- Modal recordatorio -->
+  <div class="modal-overlay" id="reminderModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h3 id="reminderModalTitle">Nuevo recordatorio</h3>
+        <button class="icon-btn" data-close aria-label="Cerrar"><i data-lucide="x"></i></button>
+      </header>
+      <form id="reminderForm" class="modal-body">
+        <input type="hidden" name="id" />
+        <label class="field">
+          <span>Título del recordatorio</span>
+          <input name="titulo" required placeholder="Hablar con el decano" />
+        </label>
+        <label class="field">
+          <span>Descripción <em>(opcional)</em></span>
+          <textarea name="descripcion" rows="2" placeholder="Detalles adicionales..."></textarea>
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>Fecha</span>
+            <input type="date" name="fecha" required />
+          </label>
+          <label class="field">
+            <span>Hora</span>
+            <input type="time" name="hora" value="08:00" />
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>Categoría</span>
+            <select name="categoria">
+              <option value="personal">Personal</option>
+              <option value="academico">Académico</option>
+              <option value="entrega">Entrega</option>
+              <option value="reunion">Reunión</option>
+              <option value="otro">Otro</option>
+            </select>
+          </label>
+          <div class="field" style="grid-column: 1 / -1">
+            <span>Prioridad</span>
+            <div class="segmented-control">
+              <label class="seg-urgente"><input type="radio" name="prioridad" value="urgente"> <span><i data-lucide="triangle-alert"></i> Urgente</span></label>
+              <label class="seg-alta"><input type="radio" name="prioridad" value="alta"> <span><i data-lucide="chevrons-up"></i> Alta</span></label>
+              <label class="seg-media"><input type="radio" name="prioridad" value="media" checked> <span><i data-lucide="minus"></i> Media</span></label>
+              <label class="seg-baja"><input type="radio" name="prioridad" value="baja"> <span><i data-lucide="chevron-down"></i> Baja</span></label>
+            </div>
+          </div>
+        </div>
+        <label class="field">
+          <span>Materia relacionada <em>(opcional)</em></span>
+          <select name="materiaId" id="reminderSubjectSelect">
+            <option value="">Sin materia</option>
+          </select>
+        </label>
+        <footer class="modal-foot">
+          <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="reminderSubmit">Crear recordatorio</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal examen -->
+  <div class="modal-overlay" id="examModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h3 id="examModalTitle">Nuevo examen</h3>
+        <button class="icon-btn" data-close aria-label="Cerrar"><i data-lucide="x"></i></button>
+      </header>
+      <form id="examForm" class="modal-body">
+        <input type="hidden" name="id" />
+        <input type="hidden" name="gradeId" />
+        <label class="field">
+          <span>Materia</span>
+          <select name="materiaId" id="examSubjectSelect" required></select>
+        </label>
+        <label class="field">
+          <span>Nombre del examen</span>
+          <input name="nombre" required placeholder="Parcial 2" />
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>Fecha</span>
+            <input type="date" name="fecha" required />
+          </label>
+          <label class="field">
+            <span>Hora</span>
+            <input type="time" name="hora" value="08:00" />
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>Porcentaje de la materia</span>
+            <input name="porcentaje" type="number" step="0.5" min="0" max="100" placeholder="25" />
+          </label>
+          <label class="field">
+            <span>Estado de preparación</span>
+            <select name="preparacion">
+              <option value="sin-iniciar">Sin iniciar</option>
+              <option value="en-progreso">En progreso</option>
+              <option value="listo">Listo</option>
+            </select>
+          </label>
+        </div>
+        <label class="field">
+          <span>Temas <em>(uno por línea)</em></span>
+          <textarea name="temas" rows="3" placeholder="Derivadas&#10;Regla de la cadena&#10;Optimización"></textarea>
+        </label>
+        <label class="field">
+          <span>Notas adicionales <em>(opcional)</em></span>
+          <textarea name="notas" rows="2" placeholder="Revisar capítulo 4..."></textarea>
+        </label>
+        <label class="field" id="examLinkField">
+          <span style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" name="crearActividad" id="examCreateGrade" style="width:auto;margin:0" />
+            Crear también como actividad calificable en la materia
+          </span>
+        </label>
+        <footer class="modal-foot">
+          <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="examSubmit">Crear examen</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal nota/actividad -->
+  <div class="modal-overlay" id="gradeModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h3 id="gradeModalTitle">Nueva actividad</h3>
+        <button class="icon-btn" data-close aria-label="Cerrar"><i data-lucide="x"></i></button>
+      </header>
+      <form id="gradeForm" class="modal-body">
+        <input type="hidden" name="id" />
+        <input type="hidden" name="materiaId" />
+        <input type="hidden" name="examId" />
+        <label class="field">
+          <span>Nombre de la actividad</span>
+          <input name="nombre" required placeholder="Parcial 1" />
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>Tipo</span>
+            <select name="tipo">
+              <option value="parcial">Parcial</option>
+              <option value="quiz">Quiz</option>
+              <option value="taller">Taller</option>
+              <option value="exposicion">Exposición</option>
+              <option value="trabajo">Trabajo</option>
+              <option value="proyecto">Proyecto</option>
+              <option value="participacion">Participación</option>
+              <option value="laboratorio">Laboratorio</option>
+              <option value="otro">Otro</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Estado</span>
+            <select name="estado">
+              <option value="evaluado">Evaluado</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>Nota obtenida</span>
+            <input name="nota" type="number" step="0.01" min="0" placeholder="4.0" id="gradeNotaInput" />
+          </label>
+          <label class="field">
+            <span>Porcentaje (%)</span>
+            <input name="porcentaje" type="number" step="0.5" min="0.5" max="100" required placeholder="20" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Fecha</span>
+          <input type="date" name="fecha" />
+        </label>
+        <div id="gradePortionInfo" style="display:none" class="grade-portion-info"></div>
+        <footer class="modal-foot">
+          <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="gradeSubmit">Guardar actividad</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal confirm -->
-  <div class="modal-overlay" id="confirmModal" style="z-index: 100" hidden>
-    <div class="modal" style="max-width: 400px" role="dialog" aria-modal="true">
+  <div class="modal-overlay" id="confirmModal" style="z-index:100" hidden>
+    <div class="modal" style="max-width:400px" role="dialog" aria-modal="true">
       <header class="modal-head">
         <h3 id="confirmTitle">Confirmar</h3>
-        <button class="icon-btn" data-close>✕</button>
+        <button class="icon-btn" data-close aria-label="Cerrar"><i data-lucide="x"></i></button>
       </header>
       <div class="modal-body">
         <p id="confirmMessage" style="margin:0"></p>
@@ -200,11 +390,11 @@
   </div>
 
   <!-- Modal alert -->
-  <div class="modal-overlay" id="alertModal" style="z-index: 100" hidden>
-    <div class="modal" style="max-width: 400px" role="dialog" aria-modal="true">
+  <div class="modal-overlay" id="alertModal" style="z-index:100" hidden>
+    <div class="modal" style="max-width:400px" role="dialog" aria-modal="true">
       <header class="modal-head">
         <h3 id="alertTitle">Atención</h3>
-        <button class="icon-btn" data-close>✕</button>
+        <button class="icon-btn" data-close aria-label="Cerrar"><i data-lucide="x"></i></button>
       </header>
       <div class="modal-body">
         <p id="alertMessage" style="margin:0"></p>
@@ -215,6 +405,8 @@
     </div>
   </div>
 
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="app.js"></script>
 </body>
 
