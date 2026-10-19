@@ -23,9 +23,17 @@
       <button class="icon-btn" id="menuToggle" aria-label="Abrir menú">
         <i data-lucide="menu"></i>
       </button>
-      <span class="brand-mini">Aulapp</span>
-      <button class="btn btn-primary" data-new-task>
-        <i data-lucide="plus"></i> Tarea
+      <span class="brand-mini">
+        <span class="brand-logo brand-logo-mini" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10 12 4 2 10l10 6 10-6Z"/>
+            <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>
+          </svg>
+        </span>
+        Aulapp
+      </span>
+      <button class="icon-btn" id="themeToggleMobile" aria-label="Cambiar tema">
+        <i data-lucide="moon"></i>
       </button>
     </header>
 
@@ -33,37 +41,48 @@
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
+      <button class="sidebar-toggle-inner" id="sidebarCollapseBtn" aria-label="Colapsar menú" title="Colapsar menú">
+        <i data-lucide="menu"></i>
+      </button>
       <div class="brand">
-        <span class="brand-mark">A</span>
-        <span class="brand-name">Aula</span>
+        <span class="brand-name">Aulapp</span>
+        <button class="icon-btn theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">
+          <i data-lucide="moon"></i>
+        </button>
       </div>
 
       <nav class="nav" id="nav">
-        <button class="nav-item" data-view="dashboard">
-          <i data-lucide="house"></i> Inicio
+        <div class="nav-section-label">Principal</div>
+        <button class="nav-item" data-view="dashboard" title="Inicio">
+          <i data-lucide="house"></i> <span class="nav-label">Inicio</span>
         </button>
-        <button class="nav-item" data-view="tasks">
-          <i data-lucide="circle-check"></i> Tareas
+        <button class="nav-item" data-view="tasks" title="Tareas">
+          <i data-lucide="circle-check"></i> <span class="nav-label">Tareas</span>
         </button>
-        <button class="nav-item" data-view="reminders">
-          <i data-lucide="bell"></i> Recordatorios
+        <button class="nav-item" data-view="reminders" title="Recordatorios">
+          <i data-lucide="bell"></i> <span class="nav-label">Recordatorios</span>
         </button>
-        <button class="nav-item" data-view="exams">
-          <i data-lucide="file-text"></i> Exámenes
+
+        <div class="nav-section-label">Académico</div>
+        <button class="nav-item" data-view="exams" title="Exámenes">
+          <i data-lucide="file-text"></i> <span class="nav-label">Exámenes</span>
         </button>
-        <button class="nav-item" data-view="calendar">
-          <i data-lucide="calendar"></i> Calendario
+        <button class="nav-item" data-view="calendar" title="Calendario">
+          <i data-lucide="calendar"></i> <span class="nav-label">Calendario</span>
         </button>
-        <button class="nav-item" data-view="subjects">
-          <i data-lucide="book-open"></i> Materias
+        <button class="nav-item" data-view="subjects" title="Materias">
+          <i data-lucide="book-open"></i> <span class="nav-label">Materias</span>
         </button>
-        <button class="nav-item" data-view="schedule">
-          <i data-lucide="clock"></i> Horario
+        <button class="nav-item" data-view="schedule" title="Horario">
+          <i data-lucide="clock"></i> <span class="nav-label">Horario</span>
         </button>
-        <button class="nav-item" data-view="stats">
-          <i data-lucide="bar-chart-2"></i> Estadísticas
+
+        <div class="nav-section-label">Análisis</div>
+        <button class="nav-item" data-view="stats" title="Estadísticas">
+          <i data-lucide="bar-chart-2"></i> <span class="nav-label">Estadísticas</span>
         </button>
       </nav>
+
     </aside>
 
     <!-- Contenido -->
@@ -278,7 +297,7 @@
         <div class="grid-2">
           <label class="field">
             <span>Porcentaje de la materia</span>
-            <input name="porcentaje" type="number" step="0.5" min="0" max="100" placeholder="25" />
+            <input name="porcentaje" type="number" step="0.1" min="0.1" max="100" placeholder="25" />
           </label>
           <label class="field">
             <span>Estado de preparación</span>
@@ -356,7 +375,7 @@
           </label>
           <label class="field">
             <span>Porcentaje (%)</span>
-            <input name="porcentaje" type="number" step="0.5" min="0.5" max="100" required placeholder="20" />
+            <input name="porcentaje" type="number" step="0.1" min="0.1" max="100" required placeholder="20" />
           </label>
         </div>
         <label class="field">
