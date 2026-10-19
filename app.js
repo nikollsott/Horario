@@ -266,13 +266,132 @@
   const subjectOf  = (t) => subjects.find(s => s.id === t.materiaId) || { nombre:"Sin materia", color:"#94a3b8" };
   const sortByDate = (list) => [...list].sort((a,b) => `${a.fecha}${a.hora||""}`.localeCompare(`${b.fecha}${b.hora||""}`));
 
-  function counters() {
+  /* ---------- Analítica general ---------- */
+  function calcOverallStats() {
+    const perSubject = subjects.map(s => ({ s, st: calcSubjectStats(s.id) }));
+    const withAvg    = perSubject.filter(x => x.st.promedioActual !== null);
+    // Promedio general: media simple de los promedios actuales
+    const promedioGeneral = withAvg.length
+      ? withAvg.reduce((a,x) => a + x.st.promedioActual, 0) / withAvg.length
+      : null;
+    // Progreso del semestre: % evaluado promedio
+    const progresoSemestre = perSubject.length
+      ? perSubject.reduce((a,x) => a + x.st.porcentajeEvaluado, 0) / perSubject.length
+      : 0;
+    // Materias en riesgo: promedio actual < nota mínima
+    const enRiesgo = perSubject.filter(x => x.st.promedioActual !== null && x.st.promedioActual < x.s.notaMinima);
+    // Mejor / peor
+    const ranking = [...withAvg].sort((a,b) => (b.st.promedioActual - a.st.promedioActual));
+    return { perSubject, withAvg, promedioGeneral, progresoSemestre, enRiesgo, ranking };
+  }
+
+  function calcCompletionStats() {
+    const done        = tasks.filter(t => t.estado === "completada");
+    const onTimeList  = done.filter(t => !t.fechaCompletada || t.fechaCompletada <= t.fecha);
+    const lateList    = done.filter(t => t.fechaCompletada && t.fechaCompletada > t.fecha);
+    const overdueList = tasks.filter(isOverdue);
+    const pendingList = tasks.filter(t => t.estado !== "completada" && !isOverdue(t));
+    const total       = tasks.length;
+    const rateOnTime  = total ? Math.round((onTimeList.length / total) * 100) : 0;
     return {
-      hoy:       tasks.filter(t => isToday(t) && t.estado !== "completada").length,
-      pendientes:tasks.filter(t => t.estado !== "completada" && !isOverdue(t)).length,
-      completadas:tasks.filter(t => t.estado === "completada").length,
-      vencidas:  tasks.filter(isOverdue).length,
+      onTime: onTimeList.length, late: lateList.length,
+      overdue: overdueList.length, pending: pendingList.length,
+      done: done.length, total, rateOnTime,
+      lists: { onTime: onTimeList, late: lateList, overdue: overdueList, pending: pendingList },
     };
+  }
+
+  // Clasifica una nota según la escala y mínima de una materia.
+  // Rangos (en escala 5.0): Excelente ≥4.5 · Bueno ≥3.8 · Aceptable ≥3.0 (mínima) · Perdida <3.0
+  function classifyNote(nota, escalaMax, notaMinima) {
+    const n = Number(nota), e = Number(escalaMax), m = Number(notaMinima);
+    if      (n >= 0.90 * e) return "excelente";
+    else if (n >= 0.76 * e) return "bueno";
+    else if (n >= m)        return "aceptable";
+    else                    return "perdida";
+  }
+
+  // Distribución por MATERIA basada en el promedio actual de cada una.
+  // Guarda el listado de materias en cada bucket para tooltips.
+  function calcSubjectDistribution() {
+    const buckets = { excelente: [], bueno: [], aceptable: [], perdida: [] };
+    subjects.forEach(s => {
+      const st = calcSubjectStats(s.id);
+      if (st.promedioActual === null) return;
+      buckets[classifyNote(st.promedioActual, s.escalaMax, s.notaMinima)].push({ s, avg: st.promedioActual });
+    });
+    return buckets;
+  }
+
+  // Distribución por NOTAS individuales de una materia específica (para el detalle).
+  function calcGradesDistributionFor(subjectId) {
+    const s = subjects.find(x => x.id === subjectId);
+    const buckets = { excelente: 0, bueno: 0, aceptable: 0, perdida: 0 };
+    if (!s) return buckets;
+    grades.forEach(g => {
+      if (g.materiaId !== subjectId) return;
+      if (g.estado !== "evaluado" || g.nota === null) return;
+      buckets[classifyNote(g.nota, s.escalaMax, s.notaMinima)]++;
+    });
+    return buckets;
+  }
+
+  function calcWeekdayLoad() {
+    const names = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+    const long  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+    const groups = [[],[],[],[],[],[],[]];
+    tasks.filter(t => t.estado !== "completada").forEach(t => {
+      const d = new Date(t.fecha + "T00:00:00");
+      if (!isNaN(d)) groups[d.getDay()].push(t);
+    });
+    // Reordenar lun→dom
+    const order = [1,2,3,4,5,6,0];
+    return order.map(i => ({ name: names[i], longName: long[i], count: groups[i].length, tasks: groups[i] }));
+  }
+
+  // Construye el HTML del tooltip con una lista de tareas (chips clicables)
+  function buildTaskTooltip(title, color, taskList) {
+    if (!taskList || taskList.length === 0) {
+      return `<div class="task-tip">
+        <div class="task-tip-head" style="color:${color}">${esc(title)}</div>
+        <div class="task-tip-empty">Sin tareas en este grupo</div>
+      </div>`;
+    }
+    const chips = sortByDate(taskList).slice(0, 12).map(t => {
+      const s = subjects.find(x => x.id === t.materiaId);
+      const dot = s ? `<span class="dot" style="background:${s.color}"></span>` : "";
+      const dateFmt = new Date(t.fecha + "T00:00:00").toLocaleDateString("es-CO", { day:"numeric", month:"short" });
+      return `<span class="task-tip-chip" data-task-id="${t.id}">${dot}<span class="task-tip-name">${esc(t.titulo)}</span><span class="task-tip-date">${dateFmt}</span></span>`;
+    }).join("");
+    const extra = taskList.length > 12 ? `<div class="task-tip-more">+ ${taskList.length - 12} más…</div>` : "";
+    return `<div class="task-tip">
+      <div class="task-tip-head" style="color:${color}">${esc(title)} · ${taskList.length}</div>
+      <div class="task-tip-list">${chips}</div>
+      ${extra}
+    </div>`;
+  }
+
+  // Vincula clicks en los chips de tareas dentro de un tooltip para abrir su detalle
+  function wireTaskTipClicks(container) {
+    container.querySelectorAll(".task-tip-chip").forEach(chip => {
+      chip.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const id = chip.dataset.taskId;
+        const t = tasks.find(x => x.id === id);
+        if (t) openTaskModal(id);
+      });
+    });
+  }
+
+  function nextDue() {
+    const todayI = todayISO();
+    const pt = tasks.filter(t => t.estado !== "completada" && t.fecha >= todayI).map(t => ({
+      type:"tarea", id:t.id, nombre:t.titulo, fecha:t.fecha, hora:t.hora, materiaId:t.materiaId
+    }));
+    const pe = exams.filter(e => e.fecha >= todayI).map(e => ({
+      type:"examen", id:e.id, nombre:e.nombre, fecha:e.fecha, hora:e.hora, materiaId:e.materiaId
+    }));
+    return sortByDate([...pt, ...pe])[0] || null;
   }
 
   function toggleTask(id) {
@@ -400,140 +519,212 @@
 
   /* ===== DASHBOARD ===== */
   function viewDashboard() {
+    const ov = calcOverallStats();
+    renderDashboardHeader();
+    renderNextDueCard();
+    renderWeekStrip(ov);
+    if (ov.enRiesgo.length) renderRiskBanner(ov.enRiesgo);
+    renderExamAlerts();
+    renderUrgentReminders();
+    renderTodayReminders();
+    renderSubjectCards();
+    renderUpcomingTasks();
+    renderOverdueTasks();
+  }
+
+  function renderDashboardHeader() {
     const userName = localStorage.getItem("aula.perfil") || "Camailo";
-    header(`Hola, ${esc(userName)}`, "Tu resumen académico de hoy.", `${ic()} + Nueva tarea`, () => openTaskModal());
-    // Fix btn content
-    const btn = content.querySelector(".page-head .btn-primary");
-    if (btn) { btn.innerHTML = `${ic("plus",16)} Nueva tarea`; }
+    const todayFmt = new Date().toLocaleDateString("es-CO", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+    const todayCap = todayFmt.charAt(0).toUpperCase() + todayFmt.slice(1);
+    header(`Hola, ${esc(userName)}`, todayCap, `${ic("plus",16)} Nueva tarea`, () => openTaskModal());
+  }
 
-    // Alertas de exámenes próximos (≤ 10 días)
-    const alertExams = sortByDate(exams.filter(e => { const d = daysUntil(e.fecha); return d >= 0 && d <= 10; }));
-    if (alertExams.length) {
-      const wrap = $('<div style="margin-bottom:24px;display:flex;flex-direction:column;gap:8px;"></div>');
-      alertExams.slice(0, 3).forEach(e => {
-        const s   = subjects.find(x => x.id === e.materiaId);
-        const days = daysUntil(e.fecha);
-        const urg  = urgencyLevel(days);
-        const cls  = urg === "urgente" ? "urgente" : urg === "importante" ? "importante" : "proximo";
-        const daysText = days === 0 ? "hoy" : days === 1 ? "mañana" : `en ${days} días`;
-        wrap.appendChild($(`
-          <div class="alert-banner ${cls}">
-            ${ic(URGENCY_ICON[urg], 20)}
-            <div class="alert-banner-body">
-              <div class="alert-banner-title">${esc(e.nombre)}${s ? ` · ${esc(s.nombre)}` : ""} — ${daysText}</div>
-              <div class="alert-banner-desc">Vale el ${e.porcentaje}% de la materia.${e.temas?.length ? ` Temas: ${e.temas.slice(0,3).join(", ")}.` : ""}</div>
-            </div>
+  function renderNextDueCard() {
+    const nxt = nextDue();
+    if (!nxt) return;
+    const s = subjects.find(x => x.id === nxt.materiaId);
+    const days = daysUntil(nxt.fecha);
+    const whenTxt = days === 0 ? "HOY" : days === 1 ? "MAÑANA" : `En ${days} días`;
+    const dateFmt = new Date(nxt.fecha + "T00:00:00").toLocaleDateString("es-CO", { weekday:"long", day:"numeric", month:"long" });
+    const urg = urgencyLevel(days);
+    const typeIcon = nxt.type === "examen" ? "file-text" : "circle-check";
+    const typeLbl  = nxt.type === "examen" ? "Próximo examen" : "Próxima entrega";
+    content.appendChild($(`
+      <div class="next-due-card ${urg}">
+        <div class="next-due-icon">${ic(typeIcon, 24)}</div>
+        <div class="next-due-body">
+          <div class="next-due-label">${typeLbl}</div>
+          <div class="next-due-title">${esc(nxt.nombre)}</div>
+          <div class="next-due-meta">
+            ${s ? `<span class="dot" style="background:${s.color}"></span><span>${esc(s.nombre)}</span><span class="sep">·</span>` : ""}
+            <span>${dateFmt}${nxt.hora ? " · " + fmtTime(nxt.hora) : ""}</span>
           </div>
-        `));
-      });
-      content.appendChild(wrap);
-    }
+        </div>
+        <div class="next-due-count">
+          <div class="next-due-days">${whenTxt}</div>
+        </div>
+      </div>
+    `));
+  }
 
-    // Recordatorios urgentes de hoy/mañana
-    const urgentReminders = sortByDate(reminders.filter(r => {
+  function renderWeekStrip(ov) {
+    const in7 = (iso) => { const d = daysUntil(iso); return d >= 0 && d <= 7; };
+    const tasksThisWeek = tasks.filter(t => t.estado !== "completada" && in7(t.fecha)).length;
+    const examsThisWeek = exams.filter(e => in7(e.fecha)).length;
+    const promGenTxt = ov.promedioGeneral !== null ? ov.promedioGeneral.toFixed(2) : "—";
+    const items = [
+      { icon:"star",          bg:"primary", num:promGenTxt,                     lbl:"Promedio general" },
+      { icon:"gauge",         bg:"info",    num:`${Math.round(ov.progresoSemestre)}%`, lbl:"Progreso del semestre" },
+      { icon:"calendar-days", bg:"primary", num:tasksThisWeek,                  lbl:"Tareas esta semana" },
+      { icon:"file-text",     bg:"warning", num:examsThisWeek,                  lbl:"Exámenes próximos" },
+    ];
+    content.appendChild($(`
+      <div class="week-strip">
+        ${items.map(it => `
+          <div class="week-strip-item">
+            <span class="week-strip-icon" style="background:var(--${it.bg}-soft);color:var(--${it.bg})">${ic(it.icon,16)}</span>
+            <div><div class="week-strip-num">${it.num}</div><div class="week-strip-lbl">${it.lbl}</div></div>
+          </div>
+        `).join("")}
+      </div>
+    `));
+  }
+
+  function renderRiskBanner(enRiesgo) {
+    const wrap = $(`
+      <div class="risk-banner">
+        ${ic("alert-triangle", 20)}
+        <div class="risk-body">
+          <div class="risk-title">Materias en riesgo (${enRiesgo.length})</div>
+          <div class="risk-list">
+            ${enRiesgo.map(x => `
+              <span class="risk-chip" data-sid="${x.s.id}">
+                <span class="dot" style="background:${x.s.color}"></span>
+                ${esc(x.s.nombre)} · <b>${x.st.promedioActual.toFixed(2)}</b> / ${x.s.notaMinima}
+              </span>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    `);
+    wrap.querySelectorAll(".risk-chip").forEach(c => c.addEventListener("click", () => openSubjectDetail(c.dataset.sid)));
+    content.appendChild(wrap);
+  }
+
+  function renderExamAlerts() {
+    const alerts = sortByDate(exams.filter(e => { const d = daysUntil(e.fecha); return d >= 0 && d <= 10; })).slice(0, 3);
+    if (!alerts.length) return;
+    const wrap = $('<div style="margin-bottom:24px;display:flex;flex-direction:column;gap:8px;"></div>');
+    alerts.forEach(e => {
+      const s = subjects.find(x => x.id === e.materiaId);
+      const days = daysUntil(e.fecha);
+      const urg = urgencyLevel(days);
+      const cls = urg === "urgente" ? "urgente" : urg === "importante" ? "importante" : "proximo";
+      const daysText = days === 0 ? "hoy" : days === 1 ? "mañana" : `en ${days} días`;
+      wrap.appendChild($(`
+        <div class="alert-banner ${cls}">
+          ${ic(URGENCY_ICON[urg], 20)}
+          <div class="alert-banner-body">
+            <div class="alert-banner-title">${esc(e.nombre)}${s ? ` · ${esc(s.nombre)}` : ""} — ${daysText}</div>
+            <div class="alert-banner-desc">Vale el ${e.porcentaje}% de la materia.${e.temas?.length ? ` Temas: ${e.temas.slice(0,3).join(", ")}.` : ""}</div>
+          </div>
+        </div>
+      `));
+    });
+    content.appendChild(wrap);
+  }
+
+  function renderUrgentReminders() {
+    const urgent = sortByDate(reminders.filter(r => {
       const days = daysUntil(r.fecha);
       return r.estado === "pendiente" && (r.prioridad === "urgente" || r.prioridad === "alta") && days >= 0 && days <= 1;
     }));
-    if (urgentReminders.length) {
-      urgentReminders.forEach(r => {
-        const days = daysUntil(r.fecha);
-        const cls  = r.prioridad === "urgente" ? "urgente" : "importante";
-        const wrap = $(`
-          <div class="alert-banner ${cls}" style="margin-bottom:8px;cursor:pointer;">
-            ${ic(PRIORITY_ICON[r.prioridad], 20)}
-            <div class="alert-banner-body">
-              <div class="alert-banner-title">${esc(r.titulo)} ${priorityBadge(r.prioridad)}</div>
-              <div class="alert-banner-desc">${days === 0 ? "Hoy" : "Mañana"} · ${fmtTime(r.hora)}</div>
+    urgent.forEach(r => {
+      const days = daysUntil(r.fecha);
+      const cls  = r.prioridad === "urgente" ? "urgente" : "importante";
+      const wrap = $(`
+        <div class="alert-banner ${cls}" style="margin-bottom:8px;cursor:pointer;">
+          ${ic(PRIORITY_ICON[r.prioridad], 20)}
+          <div class="alert-banner-body">
+            <div class="alert-banner-title">${esc(r.titulo)} ${priorityBadge(r.prioridad)}</div>
+            <div class="alert-banner-desc">${days === 0 ? "Hoy" : "Mañana"} · ${fmtTime(r.hora)}</div>
+          </div>
+        </div>
+      `);
+      wrap.addEventListener("click", () => openReminderModal(r.id));
+      content.appendChild(wrap);
+    });
+  }
+
+  function renderTodayReminders() {
+    const today = sortByDate(reminders.filter(r =>
+      r.fecha === todayISO() && r.estado === "pendiente" &&
+      r.prioridad !== "urgente" && r.prioridad !== "alta"
+    ));
+    if (!today.length) return;
+    content.appendChild($(`<h2 class="section-title">${ic("bookmark",18)} Para hoy</h2>`));
+    const wrap = $('<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>');
+    today.forEach(r => {
+      const item = $(`
+        <div class="today-reminder">
+          <span class="time">${fmtTime(r.hora)}</span>
+          <span class="text">${esc(r.titulo)}</span>
+          ${priorityBadge(r.prioridad)}
+        </div>
+      `);
+      item.addEventListener("click", () => openReminderModal(r.id));
+      wrap.appendChild(item);
+    });
+    content.appendChild(wrap);
+  }
+
+  function renderSubjectCards() {
+    if (!subjects.length) return;
+    content.appendChild($(`<h2 class="section-title">${ic("book-open",18)} Mis materias</h2>`));
+    const grid = $('<div class="card-grid" style="margin-bottom:32px;"></div>');
+    subjects.forEach(s => grid.appendChild(buildDashSubjectCard(s)));
+    content.appendChild(grid);
+  }
+
+  function buildDashSubjectCard(s) {
+    const st = calcSubjectStats(s.id);
+    const nextEx = sortByDate(exams.filter(e => e.materiaId === s.id && daysUntil(e.fecha) >= 0))[0];
+    const avg = st.promedioActual;
+    const avgCls = classifyAvgCls(avg, s.notaMinima);
+    const card = $(`
+      <div class="dash-subject-card">
+        <div class="color-strip" style="background:${s.color}"></div>
+        <div class="dash-subject-card-inner">
+          <div class="dash-subject-name">
+            <span class="dot" style="background:${s.color};width:10px;height:10px"></span>${esc(s.nombre)}
+          </div>
+          <div class="dash-subject-stats">
+            <div class="dash-stat-item">
+              <span class="dash-stat-label">Promedio actual</span>
+              <span class="dash-stat-value subject-stat-value ${avgCls}">${avg !== null ? avg.toFixed(2) : "—"}</span>
+            </div>
+            <div class="dash-stat-item">
+              <span class="dash-stat-label">Acumulado</span>
+              <span class="dash-stat-value">${st.acumulada.toFixed(2)}</span>
+            </div>
+            <div class="dash-stat-item">
+              <span class="dash-stat-label">Evaluado</span>
+              <span class="dash-stat-value" style="color:var(--primary)">${st.porcentajeEvaluado}%</span>
+            </div>
+            <div class="dash-stat-item">
+              <span class="dash-stat-label">Pendiente</span>
+              <span class="dash-stat-value" style="color:var(--text-muted)">${st.porcentajePendiente}%</span>
             </div>
           </div>
-        `);
-        wrap.addEventListener("click", () => openReminderModal(r.id));
-        content.appendChild(wrap);
-      });
-    }
+          ${nextEx ? `<div class="next-exam">${ic("calendar-clock",13)} <strong>${esc(nextEx.nombre)}</strong> · en ${daysUntil(nextEx.fecha)} días</div>` : ""}
+        </div>
+      </div>
+    `);
+    card.addEventListener("click", () => openSubjectDetail(s.id));
+    return card;
+  }
 
-    // Recordatorios de hoy
-    const todayReminders = sortByDate(reminders.filter(r => r.fecha === todayISO() && r.estado === "pendiente" && r.prioridad !== "urgente" && r.prioridad !== "alta"));
-    if (todayReminders.length) {
-      content.appendChild($(`<h2 class="section-title">${ic("bookmark",18)} Para hoy</h2>`));
-      const rWrap = $('<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>');
-      todayReminders.forEach(r => {
-        const item = $(`
-          <div class="today-reminder">
-            <span class="time">${fmtTime(r.hora)}</span>
-            <span class="text">${esc(r.titulo)}</span>
-            ${priorityBadge(r.prioridad)}
-          </div>
-        `);
-        item.addEventListener("click", () => openReminderModal(r.id));
-        rWrap.appendChild(item);
-      });
-      content.appendChild(rWrap);
-    }
-
-    // Stats rápidas
-    const c = counters();
-    const nextExam = sortByDate(exams.filter(e => daysUntil(e.fecha) >= 0))[0];
-    const topRow = $('<div style="display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:32px;"></div>');
-    topRow.appendChild($(`<div class="stat accent"><b>${c.hoy}</b><span>Tareas para hoy</span></div>`));
-    topRow.appendChild($(`<div class="stat"><b>${c.pendientes}</b><span>Pendientes</span></div>`));
-    topRow.appendChild($(`<div class="stat ok"><b>${c.completadas}</b><span>Completadas</span></div>`));
-    if (nextExam) {
-      const s = subjects.find(x => x.id === nextExam.materiaId);
-      const days = daysUntil(nextExam.fecha);
-      const urg  = urgencyLevel(days);
-      topRow.appendChild($(`<div class="stat ${urg==="urgente"?"danger":urg==="importante"?"warning":"accent"}">
-        <b>${days === 0 ? "HOY" : days}</b>
-        <span>días para ${esc(nextExam.nombre)}${s ? ` (${esc(s.nombre)})` : ""}</span>
-      </div>`));
-    }
-    content.appendChild(topRow);
-
-    // Cards de materias
-    if (subjects.length) {
-      content.appendChild($(`<h2 class="section-title">${ic("book-open",18)} Mis materias</h2>`));
-      const subGrid = $('<div class="card-grid" style="margin-bottom:32px;"></div>');
-      subjects.forEach(s => {
-        const st = calcSubjectStats(s.id);
-        const nextEx = sortByDate(exams.filter(e => e.materiaId === s.id && daysUntil(e.fecha) >= 0))[0];
-        const avg = st.promedioActual;
-        const avgCls = avg === null ? "" : avg >= s.notaMinima * 1.2 ? "good" : avg >= s.notaMinima ? "warn" : "danger-text";
-        const card = $(`
-          <div class="dash-subject-card">
-            <div class="color-strip" style="background:${s.color}"></div>
-            <div class="dash-subject-card-inner">
-              <div class="dash-subject-name">
-                <span class="dot" style="background:${s.color};width:10px;height:10px"></span>${esc(s.nombre)}
-              </div>
-              <div class="dash-subject-stats">
-                <div class="dash-stat-item">
-                  <span class="dash-stat-label">Promedio actual</span>
-                  <span class="dash-stat-value subject-stat-value ${avgCls}">${avg !== null ? avg.toFixed(2) : "—"}</span>
-                </div>
-                <div class="dash-stat-item">
-                  <span class="dash-stat-label">Acumulado</span>
-                  <span class="dash-stat-value">${st.acumulada.toFixed(2)}</span>
-                </div>
-                <div class="dash-stat-item">
-                  <span class="dash-stat-label">Evaluado</span>
-                  <span class="dash-stat-value" style="color:var(--primary)">${st.porcentajeEvaluado}%</span>
-                </div>
-                <div class="dash-stat-item">
-                  <span class="dash-stat-label">Pendiente</span>
-                  <span class="dash-stat-value" style="color:var(--text-muted)">${st.porcentajePendiente}%</span>
-                </div>
-              </div>
-              ${nextEx ? `<div class="next-exam">${ic("calendar-clock",13)} <strong>${esc(nextEx.nombre)}</strong> · en ${daysUntil(nextEx.fecha)} días</div>` : ""}
-            </div>
-          </div>
-        `);
-        card.addEventListener("click", () => { state.subjectId = s.id; state.subjectTab = "notas"; state.view = "subjectDetail"; render(); });
-        subGrid.appendChild(card);
-      });
-      content.appendChild(subGrid);
-    }
-
-    // Próximas tareas
+  function renderUpcomingTasks() {
     content.appendChild($(`<h2 class="section-title">${ic("circle-check",18)} Próximas tareas</h2>`));
     const list = $('<div class="task-list"></div>');
     const upcoming = sortByDate(tasks.filter(t => t.estado !== "completada" && t.fecha >= todayISO())).slice(0, 5);
@@ -548,14 +739,30 @@
     }
     upcoming.forEach(t => list.appendChild(taskRow(t)));
     content.appendChild(list);
+  }
 
+  function renderOverdueTasks() {
     const overdue = sortByDate(tasks.filter(isOverdue));
-    if (overdue.length) {
-      content.appendChild($(`<h2 class="section-title">${ic("triangle-alert",18)} Vencidas</h2>`));
-      const ol = $('<div class="task-list"></div>');
-      overdue.forEach(t => ol.appendChild(taskRow(t)));
-      content.appendChild(ol);
-    }
+    if (!overdue.length) return;
+    content.appendChild($(`<h2 class="section-title">${ic("triangle-alert",18)} Vencidas</h2>`));
+    const list = $('<div class="task-list"></div>');
+    overdue.forEach(t => list.appendChild(taskRow(t)));
+    content.appendChild(list);
+  }
+
+  // Helpers compartidos
+  function openSubjectDetail(sid) {
+    state.subjectId = sid;
+    state.subjectTab = "notas";
+    state.view = "subjectDetail";
+    render();
+  }
+
+  function classifyAvgCls(avg, notaMinima) {
+    if (avg === null) return "";
+    if (avg >= notaMinima * 1.2) return "good";
+    if (avg >= notaMinima)       return "warn";
+    return "danger-text";
   }
 
   /* ===== RECORDATORIOS ===== */
@@ -816,7 +1023,7 @@
           <div style="margin-top:12px"><span class="badge">${pend} tareas pendientes</span></div>
         </article>
       `);
-      card.addEventListener("click", () => { state.subjectId = s.id; state.subjectTab = "notas"; state.view = "subjectDetail"; render(); });
+      card.addEventListener("click", () => openSubjectDetail(s.id));
       card.querySelector("[data-menu]").addEventListener("click", e => {
         e.stopPropagation();
         const wrap = card.querySelector(".menu-wrap");
@@ -984,6 +1191,36 @@
         </div>
       `));
       return;
+    }
+
+    // Distribución de notas individuales de ESTA materia
+    const subjDist = calcGradesDistributionFor(s.id);
+    const subjTotal = subjDist.excelente + subjDist.bueno + subjDist.aceptable + subjDist.perdida;
+    if (subjTotal > 0) {
+      const items = [
+        { lbl:"Excelente", desc:"≥ 4.5", color:"var(--success)", v:subjDist.excelente },
+        { lbl:"Bueno",     desc:"≥ 3.8", color:"var(--info)",    v:subjDist.bueno },
+        { lbl:"Aceptable", desc:`≥ ${s.notaMinima}`, color:"var(--warning)", v:subjDist.aceptable },
+        { lbl:"Perdida",   desc:`< ${s.notaMinima}`, color:"var(--danger)",  v:subjDist.perdida },
+      ];
+      const subjDistCard = $(`
+        <div class="card subject-grade-dist">
+          <h3 class="subject-grade-dist-title">${ic("bar-chart-2",15)} Distribución de notas registradas <span>· ${subjTotal} evaluadas</span></h3>
+          <div class="subject-grade-dist-row"></div>
+        </div>
+      `);
+      const row = subjDistCard.querySelector(".subject-grade-dist-row");
+      items.forEach(it => {
+        const pct = Math.round((it.v / subjTotal) * 100);
+        row.appendChild($(`
+          <div class="subject-grade-dist-item">
+            <div class="subject-grade-dist-count" style="color:${it.color}">${it.v}</div>
+            <div class="subject-grade-dist-bar"><div style="width:${pct}%;background:${it.color}"></div></div>
+            <div class="subject-grade-dist-lbl">${it.lbl} <span>${it.desc}</span></div>
+          </div>
+        `));
+      });
+      content.appendChild(subjDistCard);
     }
 
     const tableWrap = $('<div class="grades-section"><div class="grades-table-wrap"></div></div>');
@@ -1375,7 +1612,7 @@
             const end    = Number(ho.horaFin.split(":")[0])   + Number(ho.horaFin.split(":")[1])/60;
             const height = Math.max(0.5, end-start)*56-4;
             const block  = $(`<div class="sched-block" style="background:${s.color};height:${height}px"><b>${esc(s.nombre)}</b><small>${fmtTime(ho.horaInicio)} – ${fmtTime(ho.horaFin)}</small><br><small>${esc(s.profesor||"")}</small></div>`);
-            block.addEventListener("click", () => { state.subjectId = s.id; state.view = "subjectDetail"; render(); });
+            block.addEventListener("click", () => openSubjectDetail(s.id));
             slot.appendChild(block);
           }
         }));
@@ -1387,61 +1624,271 @@
 
   /* ===== ESTADÍSTICAS ===== */
   function viewStats() {
-    header("Estadísticas", "Tu productividad académica calculada automáticamente.");
-    const c = counters();
-    const total = tasks.length || 1;
-    const pct   = Math.round((c.completadas/total)*100);
+    header("Estadísticas", "Analítica académica calculada automáticamente a partir de tus notas y tareas.");
+    const ov   = calcOverallStats();
+    const comp = calcCompletionStats();
+    const dist = calcSubjectDistribution();
+    const load = calcWeekdayLoad();
+    const avgEscala = subjects.length ? subjects.reduce((a,s) => a + Number(s.escalaMax), 0) / subjects.length : 5;
+
+    renderStatsKpis(ov, comp, avgEscala);
+    if (ov.enRiesgo.length) renderStatsRisk(ov);
+    if (ov.ranking.length)  renderStatsRanking(ov, avgEscala);
+    renderStatsDistribution(dist);
+    if (comp.total > 0)     renderStatsCompletion(comp);
+    renderStatsWeekdayLoad(load);
+    renderStatsSubjectDetail();
+  }
+
+  function renderStatsKpis(ov, comp, avgEscala) {
+    const promMin = subjects.length
+      ? subjects.reduce((a,s) => a + Number(s.notaMinima), 0) / subjects.length
+      : 3;
+    const promGenCls = ov.promedioGeneral === null ? "" :
+      ov.promedioGeneral >= promMin * 1.1 ? "good" :
+      ov.promedioGeneral >= promMin ? "warn" : "danger-text";
+    const promGenTxt = ov.promedioGeneral !== null ? ov.promedioGeneral.toFixed(2) : "—";
+    const riskColor  = ov.enRiesgo.length ? "danger" : "success";
+    const riskIcon   = ov.enRiesgo.length ? "alert-triangle" : "shield-check";
+
     content.appendChild($(`
-      <section class="card">
-        <h3 style="font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">${ic("bar-chart-2",16)} Progreso general de tareas</h3>
-        <div class="ring">${pct}%</div>
-        <div style="color:var(--text-muted);font-size:13.5px;margin:4px 0 12px">Tareas completadas</div>
-        <div class="progress"><i style="width:${pct}%"></i></div>
-      </section>
-    `));
-    content.appendChild($(`
-      <div class="stat-grid" style="margin-top:16px">
-        <div class="stat"><b>${c.pendientes}</b><span>Pendientes</span></div>
-        <div class="stat ok"><b>${c.completadas}</b><span>Completadas</span></div>
-        <div class="stat danger"><b>${c.vencidas}</b><span>Vencidas</span></div>
+      <div class="stats-kpi-grid">
+        ${kpiCard("star",  "primary", `${promGenTxt}<span class="stats-kpi-max"> / ${avgEscala.toFixed(1)}</span>`, "Promedio general", promGenCls)}
+        ${kpiCard("gauge", "info",    `${Math.round(ov.progresoSemestre)}%`, "Progreso del semestre")}
+        ${kpiCard("check-circle-2", "success", `${comp.rateOnTime}%`, `Tareas a tiempo (${comp.onTime}/${comp.total})`)}
+        ${kpiCard(riskIcon, riskColor, ov.enRiesgo.length, "Materias en riesgo")}
       </div>
     `));
-    content.appendChild($(`<h2 class="section-title">${ic("graduation-cap",18)} Rendimiento por materia</h2>`));
-    const box = $('<div style="display:flex;flex-direction:column;gap:20px"></div>');
-    if (!subjects.length) box.appendChild($('<div class="empty">Crea materias para ver su rendimiento.</div>'));
-    subjects.forEach(s => {
-      const st   = calcSubjectStats(s.id);
-      const mine = tasks.filter(t => t.materiaId===s.id);
-      const done = mine.filter(t => t.estado==="completada").length;
-      const p    = mine.length ? Math.round((done/mine.length)*100) : 0;
-      const avg  = st.promedioActual;
-      const avgCls = avg === null ? "" : avg >= s.notaMinima * 1.2 ? "good" : avg >= s.notaMinima ? "warn" : "danger-text";
-      box.appendChild($(`
-        <div class="card" style="padding:20px">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px">
-            <h3 style="display:flex;align-items:center;gap:8px;font-size:16px">
-              <span class="dot" style="background:${s.color}"></span>${esc(s.nombre)}
-            </h3>
-            <div style="display:flex;gap:16px">
-              <div style="text-align:center">
-                <div class="subject-stat-value ${avgCls}" style="font-size:22px">${avg !== null ? avg.toFixed(2) : "—"}</div>
-                <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Promedio</div>
-              </div>
-              <div style="text-align:center">
-                <div style="font-size:22px;font-weight:700;font-family:var(--font-display)">${st.acumulada.toFixed(2)}</div>
-                <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Acumulado</div>
-              </div>
-            </div>
+  }
+
+  function kpiCard(iconName, color, value, label, valueCls = "") {
+    return `
+      <div class="stats-kpi">
+        <div class="stats-kpi-icon" style="background:var(--${color}-soft);color:var(--${color})">${ic(iconName, 20)}</div>
+        <div>
+          <div class="stats-kpi-value ${valueCls}">${value}</div>
+          <div class="stats-kpi-label">${label}</div>
+        </div>
+      </div>`;
+  }
+
+  function renderStatsRisk(ov) {
+    const section = $(`
+      <section class="stats-section stats-section-danger">
+        <h2 class="stats-section-title">${ic("alert-triangle", 18)} Necesitan atención</h2>
+        <div class="risk-detail-list"></div>
+      </section>
+    `);
+    const list = section.querySelector(".risk-detail-list");
+    ov.enRiesgo.forEach(x => {
+      const needed = calcProjection(x.s.id, x.s.notaMinima);
+      list.appendChild($(`
+        <div class="risk-detail-item" data-sid="${x.s.id}">
+          <div class="risk-detail-head">
+            <span class="dot" style="background:${x.s.color}"></span>
+            <strong>${esc(x.s.nombre)}</strong>
+            <span class="risk-detail-avg">${x.st.promedioActual.toFixed(2)} / ${x.s.notaMinima}</span>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
-            <span>Evaluado: <b>${st.porcentajeEvaluado}%</b></span>
-            <span style="color:var(--text-muted)">Tareas: ${done}/${mine.length} (${p}%)</span>
-          </div>
-          <div class="progress"><i style="width:${st.porcentajeEvaluado}%;background:${s.color}"></i></div>
+          <div class="risk-detail-msg">${needed ? esc(needed.mensaje) : ""}</div>
         </div>
       `));
     });
+    list.querySelectorAll(".risk-detail-item").forEach(el =>
+      el.addEventListener("click", () => openSubjectDetail(el.dataset.sid))
+    );
+    content.appendChild(section);
+  }
+
+  function renderStatsRanking(ov, avgEscala) {
+    const maxVal = Math.max(...ov.ranking.map(x => x.st.promedioActual), avgEscala);
+    const section = $(`
+      <section class="stats-section">
+        <h2 class="stats-section-title">${ic("trophy", 18)} Ranking de materias</h2>
+        <div class="rank-bars"></div>
+      </section>
+    `);
+    const bars = section.querySelector(".rank-bars");
+    ov.ranking.forEach((x, idx) => {
+      const pct = (x.st.promedioActual / maxVal) * 100;
+      const cls = classifyAvgCls(x.st.promedioActual, x.s.notaMinima);
+      bars.appendChild($(`
+        <div class="rank-row">
+          <div class="rank-pos">${idx + 1}</div>
+          <div class="rank-info">
+            <div class="rank-label"><span class="dot" style="background:${x.s.color}"></span>${esc(x.s.nombre)}</div>
+            <div class="rank-bar-track">
+              <div class="rank-bar-fill" style="width:${pct}%;background:${x.s.color}"></div>
+            </div>
+          </div>
+          <div class="rank-value ${cls}">${x.st.promedioActual.toFixed(2)}</div>
+        </div>
+      `));
+    });
+    content.appendChild(section);
+  }
+
+  function renderStatsDistribution(dist) {
+    const total = dist.excelente.length + dist.bueno.length + dist.aceptable.length + dist.perdida.length;
+    if (total === 0) return;
+    const max = Math.max(dist.excelente.length, dist.bueno.length, dist.aceptable.length, dist.perdida.length, 1);
+    const items = [
+      { lbl:"Excelente", desc:"4.5 – 5.0", color:"var(--success)", list:dist.excelente },
+      { lbl:"Bueno",     desc:"3.8 – 4.4", color:"var(--info)",    list:dist.bueno },
+      { lbl:"Aceptable", desc:"3.0 – 3.7", color:"var(--warning)", list:dist.aceptable },
+      { lbl:"Perdida",   desc:"< 3.0",     color:"var(--danger)",  list:dist.perdida },
+    ];
+    const section = $(`
+      <section class="stats-section">
+        <h2 class="stats-section-title">${ic("bar-chart-2", 18)} Distribución de materias por rendimiento <span class="stats-section-sub">(según promedio actual · pasa el mouse para ver cuáles)</span></h2>
+        <div class="dist-grid"></div>
+      </section>
+    `);
+    const grid = section.querySelector(".dist-grid");
+    items.forEach(it => grid.appendChild(buildDistItem(it, total, max)));
+    content.appendChild(section);
+  }
+
+  function buildDistItem(it, total, max) {
+    const v   = it.list.length;
+    const pct = Math.round((v / total) * 100);
+    const h   = Math.max(6, (v / max) * 140);
+    const tipChips = v > 0
+      ? it.list.map(x => `<span class="dist-tooltip-chip"><span class="dot" style="background:${x.s.color}"></span>${esc(x.s.nombre)} <b>${x.avg.toFixed(2)}</b></span>`).join("")
+      : `<span class="dist-tooltip-empty">Ninguna materia en este rango</span>`;
+    const item = $(`
+      <div class="dist-item ${v > 0 ? "has-data" : ""}">
+        <div class="dist-tooltip">
+          <div class="dist-tooltip-head" style="color:${it.color}">${it.lbl} · ${it.desc}</div>
+          <div class="dist-tooltip-list">${tipChips}</div>
+        </div>
+        <div class="dist-bar-wrap">
+          <div class="dist-bar" style="height:${h}px;background:${it.color}"></div>
+        </div>
+        <div class="dist-num">${v}</div>
+        <div class="dist-lbl">${it.lbl}</div>
+        <div class="dist-desc">${it.desc} · ${pct}%</div>
+      </div>
+    `);
+    item.querySelectorAll(".dist-tooltip-chip").forEach((chip, idx) => {
+      chip.style.cursor = "pointer";
+      chip.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openSubjectDetail(it.list[idx].s.id);
+      });
+    });
+    return item;
+  }
+
+  function renderStatsCompletion(comp) {
+    const segs = [
+      { lbl:"A tiempo",   list:comp.lists.onTime,  color:"var(--success)" },
+      { lbl:"Tardías",    list:comp.lists.late,    color:"var(--warning)" },
+      { lbl:"Pendientes", list:comp.lists.pending, color:"var(--info)" },
+      { lbl:"Vencidas",   list:comp.lists.overdue, color:"var(--danger)" },
+    ];
+    const section = $(`
+      <section class="stats-section">
+        <h2 class="stats-section-title">${ic("activity", 18)} Cumplimiento de tareas <span class="stats-section-sub">(pasa el mouse por la leyenda para ver cuáles)</span></h2>
+        <div class="segbar"></div>
+        <div class="segbar-legend"></div>
+      </section>
+    `);
+    const barEl = section.querySelector(".segbar");
+    const legEl = section.querySelector(".segbar-legend");
+    segs.forEach(seg => {
+      const v = seg.list.length;
+      if (v > 0) {
+        barEl.appendChild($(`<div class="segbar-piece" style="flex:${v};background:${seg.color}" title="${seg.lbl}: ${v}"></div>`));
+      }
+      const legendItem = $(`
+        <div class="segbar-legend-item has-tip">
+          <span class="segbar-dot" style="background:${seg.color}"></span>
+          ${seg.lbl} <b>${v}</b>
+          ${buildTaskTooltip(seg.lbl, seg.color, seg.list)}
+        </div>
+      `);
+      wireTaskTipClicks(legendItem);
+      legEl.appendChild(legendItem);
+    });
+    content.appendChild(section);
+  }
+
+  function renderStatsWeekdayLoad(load) {
+    const total = load.reduce((a,x) => a + x.count, 0);
+    if (total === 0) return;
+    const max = Math.max(...load.map(x => x.count), 1);
+    const section = $(`
+      <section class="stats-section">
+        <h2 class="stats-section-title">${ic("calendar-days", 18)} Carga por día de la semana <span class="stats-section-sub">(pasa el mouse para ver las tareas)</span></h2>
+        <div class="load-grid"></div>
+      </section>
+    `);
+    const grid = section.querySelector(".load-grid");
+    load.forEach(d => {
+      const h = Math.max(4, (d.count / max) * 120);
+      const isHeavy = d.count === max && d.count > 0;
+      const col = $(`
+        <div class="load-col has-tip">
+          ${buildTaskTooltip(d.longName, "var(--primary)", d.tasks)}
+          <div class="load-bar-wrap">
+            <div class="load-bar ${isHeavy ? "heavy" : ""}" style="height:${h}px"></div>
+          </div>
+          <div class="load-num">${d.count}</div>
+          <div class="load-day">${d.name}</div>
+        </div>
+      `);
+      wireTaskTipClicks(col);
+      grid.appendChild(col);
+    });
+    content.appendChild(section);
+  }
+
+  function renderStatsSubjectDetail() {
+    if (!subjects.length) {
+      content.appendChild($('<div class="empty">Crea materias para ver tu rendimiento académico aquí.</div>'));
+      return;
+    }
+    content.appendChild($(`<h2 class="section-title">${ic("graduation-cap",18)} Detalle por materia</h2>`));
+    const box = $('<div style="display:flex;flex-direction:column;gap:16px"></div>');
+    subjects.forEach(s => box.appendChild(buildStatsSubjectRow(s)));
     content.appendChild(box);
+  }
+
+  function buildStatsSubjectRow(s) {
+    const st   = calcSubjectStats(s.id);
+    const mine = tasks.filter(t => t.materiaId === s.id);
+    const done = mine.filter(t => t.estado === "completada").length;
+    const p    = mine.length ? Math.round((done/mine.length)*100) : 0;
+    const avg  = st.promedioActual;
+    const avgCls = classifyAvgCls(avg, s.notaMinima);
+    const proj = calcProjection(s.id, s.escalaMax);
+    const projHtml = proj && proj.notaNecesaria !== null && !proj.logrado
+      ? `<span>Para máximo necesitas <b style="color:var(--primary)">${proj.notaNecesaria.toFixed(2)}</b> en el ${st.porcentajePendiente}% restante</span>`
+      : "";
+    const stat = (val, label, cls = "") => `
+      <div style="text-align:center">
+        <div class="subject-stat-value ${cls}" style="font-size:22px;font-weight:700;font-family:var(--font-display)">${val}</div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">${label}</div>
+      </div>`;
+    return $(`
+      <div class="card" style="padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+          <h3 style="display:flex;align-items:center;gap:8px;font-size:16px">
+            <span class="dot" style="background:${s.color}"></span>${esc(s.nombre)}
+          </h3>
+          <div style="display:flex;gap:20px">
+            ${stat(avg !== null ? avg.toFixed(2) : "—", "Promedio", avgCls)}
+            ${stat(st.acumulada.toFixed(2), "Acumulado")}
+            ${stat(`${st.porcentajeEvaluado}%`, "Evaluado")}
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:var(--text-muted)">
+          <span>Tareas: <b style="color:var(--text)">${done}/${mine.length}</b> (${p}%)</span>
+          ${projHtml}
+        </div>
+        <div class="progress"><i style="width:${st.porcentajeEvaluado}%;background:${s.color}"></i></div>
+      </div>
+    `);
   }
 
   /* ---------- Modales ---------- */
@@ -2194,8 +2641,48 @@
     lc();
   }
 
+  /* ---------- Sidebar collapse ---------- */
+  const SIDEBAR_KEY = "aulapp:sidebarCollapsed";
+  function applySidebarState(collapsed) {
+    const layout = document.querySelector(".layout");
+    if (!layout) return;
+    layout.classList.toggle("sidebar-collapsed", collapsed);
+    try { localStorage.setItem(SIDEBAR_KEY, collapsed ? "1" : "0"); } catch (e) {}
+    const btn = document.getElementById("sidebarCollapseBtn");
+    if (btn) btn.setAttribute("aria-label", collapsed ? "Expandir menú" : "Colapsar menú");
+  }
+  let sidebarCollapsed = false;
+  try { sidebarCollapsed = localStorage.getItem(SIDEBAR_KEY) === "1"; } catch (e) {}
+  applySidebarState(sidebarCollapsed);
+  document.getElementById("sidebarCollapseBtn")?.addEventListener("click", () => {
+    const now = !document.querySelector(".layout").classList.contains("sidebar-collapsed");
+    applySidebarState(now);
+  });
+
+  /* ---------- Theme ---------- */
+  const THEME_KEY = "aulapp:theme";
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+    const iconName = theme === "dark" ? "sun" : "moon";
+    ["themeToggle", "themeToggleMobile"].forEach(id => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.innerHTML = `<i data-lucide="${iconName}"></i>`;
+    });
+    if (window.lucide?.createIcons) window.lucide.createIcons();
+  }
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute("data-theme") || "dark";
+    applyTheme(cur === "dark" ? "light" : "dark");
+  }
+  let savedTheme = "dark";
+  try { savedTheme = localStorage.getItem(THEME_KEY) || "dark"; } catch (e) {}
+  applyTheme(savedTheme);
+  document.getElementById("themeToggle")?.addEventListener("click", toggleTheme);
+  document.getElementById("themeToggleMobile")?.addEventListener("click", toggleTheme);
+
   /* ---------- Init ---------- */
-  document.documentElement.setAttribute("data-theme", "dark");
   seed();
   checkNotifications();
   render();
